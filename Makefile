@@ -36,7 +36,7 @@ bin.native:
 bin.byte:
 			$(OCB) ocaml-protoc.byte
 
-demo.native:
+demo.native: src/js-demo/demo.ml 
 			$(OCB) -I src/js-demo/ demo.native
 
 PREFIX_BIN=$(PREFIX)/bin

@@ -44,9 +44,9 @@ let gen types (f:(?and_:unit -> Ocaml_types.type_ -> string))  =
 
 (* -- main -- *)
 
-let compile_str s = 
+let compile_str (s:string) : string = 
   let proto  = Parser.proto_ Lexer.lexer (Lexing.from_string s) in 
-  let pbtt   = Pbtt_util.compile_proto_p1 "demo" proto in 
+  let pbtt   = Pbtt_util.compile_proto_p1 "demo.proto" proto in 
   let pbtt   = List.map (Pbtt_util.compile_proto_p2 pbtt) pbtt in 
   let grouped_pbtt = List.rev @@ Pbtt_util.group pbtt in 
   let otypes = List.rev @@ List.fold_left (fun otypes types -> 
@@ -62,3 +62,6 @@ let compile_str s =
       List.flatten @@ List.map (fun t -> wrap_opt @@ Ocaml_codegen.gen_default_sig t) types_ ;
     ]
   ) (otypes)
+
+let () = 
+  print_endline @@ compile_str "message x { required int32 f = 1; }"  

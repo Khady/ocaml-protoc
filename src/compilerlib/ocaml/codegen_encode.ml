@@ -13,7 +13,7 @@ let gen_encode_field_key sc {T.field_number; T.payload_kind; T.packed; _ } =
   F.line sc @@ sp "Pbrt.Encoder.key (%i, Pbrt.%s) encoder; " 
       field_number (constructor_name @@ Codegen_util.string_of_payload_kind payload_kind packed)
 
-let gen_encode_field sc v_name field_encoding field_type = 
+let gen_encode_field ?with_key sc v_name field_encoding field_type = 
 
   let {
     T.field_number; 
@@ -21,21 +21,58 @@ let gen_encode_field sc v_name field_encoding field_type =
     T.nested; 
     T.packed} = field_encoding in 
 
+  let encode_basic_type bt = 
+    Backend_ocaml_static.runtime_function (`Encode, payload_kind, bt) 
+  in
+  
+  let encode_key sc = 
+    match with_key with
+    | Some () -> gen_encode_field_key sc field_encoding
+    | None -> ()
+  in 
+
   match field_type, packed with 
-  | T.User_defined_type t, false -> 
+  | T.User_defined_type t, false -> (
+    encode_key sc;
     let f_name = function_name_of_user_defined "encode" t in 
     if nested 
     then F.line sc @@ sp "Pbrt.Encoder.nested (%s %s) encoder;" f_name v_name 
     else F.line sc @@ sp "%s %s encoder;" f_name v_name 
+  )
   | T.User_defined_type _, true -> 
     E.invalid_packed_option v_name 
-  | T.Unit, false -> 
+  | T.Unit, false -> ( 
+    encode_key sc;
     F.line sc "Pbrt.Encoder.empty_nested encoder;" 
+  )
   | T.Unit , true -> 
     E.invalid_packed_option v_name
-  | _, _ ->  
-    let rt = Backend_ocaml_static.runtime_function (`Encode, payload_kind, field_type) in 
+  | T.Basic_type bt, _ -> ( 
+    encode_key sc;
+    let rt = encode_basic_type bt in 
     F.line sc @@ sp "%s %s encoder;" rt v_name
+  )
+  | T.Associative_list {T.al_key; al_value; }, _ -> ( 
+    let encode_key_f = encode_basic_type al_key in 
+    let encode_value_f = begin match al_value with
+      | T.Al_basict_type bt -> encode_basic_type bt 
+      | T.Al_user_defined_type ud -> function_name_of_user_defined "encode" ud 
+    end in 
+
+    F.line sc "List.iter (fun (k, v) ->"; 
+    F.scope sc (fun sc -> 
+      encode_key sc; 
+      F.line sc @@ "Pbrt.Encoder.map_entry";
+      F.scope sc (fun sc -> 
+        F.line sc @@ sp "~encode_key:%s" encode_key_f;  
+        F.line sc @@ sp "~encode_value:%s" encode_value_f;  
+        F.line sc @@ sp "((k, %s), (v, %s))" "Pbrt.Bytes" "Pbrt.Bytes"; 
+        (* TODO fix hardcode payload kind*)
+        F.line sc "encoder"; 
+      ); 
+    ); 
+    F.line sc @@ sp ") %s;" v_name; 
+  )
 
 let gen_encode_record ?and_ {T.record_name; fields } sc = 
   L.log "gen_encode_record record_name: %s\n" record_name; 
@@ -56,15 +93,13 @@ let gen_encode_record ?and_ {T.record_name; fields } sc =
         match type_qualifier, packed with 
         | T.No_qualifier, false -> (
           let v_name = sp "v.%s" field_name in 
-          gen_encode_field_key sc field_encoding;
-          gen_encode_field sc v_name field_encoding field_type
+          gen_encode_field ~with_key:() sc v_name field_encoding field_type
         )
         | T.Option, false -> (
           F.line sc @@ sp "(match v.%s with " field_name;
           F.line sc @@ sp "| Some x -> (";
           F.scope sc (fun sc ->
-            gen_encode_field_key sc field_encoding;
-            gen_encode_field sc "x" field_encoding field_type;
+            gen_encode_field ~with_key:() sc "x" field_encoding field_type;
           ); 
           F.line sc ")";
           F.line sc "| None -> ());";
@@ -75,16 +110,14 @@ let gen_encode_record ?and_ {T.record_name; fields } sc =
         | T.List, false -> (
           F.line sc "List.iter (fun x -> ";
           F.scope sc (fun sc -> 
-            gen_encode_field_key sc field_encoding;
-            gen_encode_field sc "x" field_encoding field_type;
+            gen_encode_field ~with_key:() sc "x" field_encoding field_type;
           );
           F.line sc @@ sp ") v.%s;" field_name; 
         )
         | T.Repeated_field, false -> (
           F.line sc "Pbrt.Repeated_field.iter (fun x -> ";
           F.scope sc (fun sc -> 
-            gen_encode_field_key sc field_encoding;
-            gen_encode_field sc "x" field_encoding field_type;
+            gen_encode_field ~with_key:() sc "x" field_encoding field_type;
           );
           F.line sc @@ sp ") v.%s;" field_name; 
         )
@@ -121,8 +154,7 @@ let gen_encode_record ?and_ {T.record_name; fields } sc =
           | _ -> F.line sc @@ sp "| %s x -> (" field_name
           );
           F.scope sc (fun sc -> 
-            gen_encode_field_key sc field_encoding;
-            gen_encode_field sc "x" field_encoding field_type
+            gen_encode_field ~with_key:() sc "x" field_encoding field_type
           ); 
           F.line sc ")";
         ) variant_constructors;

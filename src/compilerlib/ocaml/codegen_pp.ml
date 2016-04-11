@@ -8,7 +8,17 @@ open Codegen_util
 let gen_pp_field field_type = 
   match field_type with 
   | T.User_defined_type t -> function_name_of_user_defined "pp" t 
+  | T.Associative_list {T.al_key; T.al_value} -> 
+    let pp_key = sp "Pbrt.Pp.pp_%s" (string_of_field_type (T.Basic_type al_key)) in 
+    let pp_value = sp "Pbrt.Pp.pp_%s" (begin match al_value with
+      | Al_basict_type bt -> string_of_field_type (T.Basic_type bt) 
+      | Al_user_defined_type ud -> string_of_field_type (T.User_defined_type ud) 
+    end) in 
+    sp "(Pbrt.Pp.pp_associative_list %s %s)"
+      pp_key pp_value 
+
   | _ ->  sp "Pbrt.Pp.pp_%s" (string_of_field_type field_type) 
+
 
 let gen_pp_record  ?and_ {T.record_name; fields } sc = 
   L.log "gen_pp, record_name: %s\n" record_name; 

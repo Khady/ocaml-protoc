@@ -5,14 +5,8 @@ module L = Logger
 
 open Codegen_util
 
-(* Generate the string which is the default value for a given field
-   type and default information.
- *)
-let default_value_of_type field_name field_type field_default = 
-  match field_type, field_default with 
-  | T.User_defined_type t, _ -> 
-    function_name_of_user_defined "default" t  ^ " ()"
-  | T.Unit  , None -> "()"
+let default_value_of_basic_type field_name basic_type field_default = 
+  match basic_type, field_default with 
   | T.String, None -> "\"\""
   | T.String, Some (Pbpt.Constant_string s) -> sp "\"%s\"" s 
   | T.Float , None -> "0." 
@@ -29,6 +23,18 @@ let default_value_of_type field_name field_type field_default =
   | T.Bool  , Some (Pbpt.Constant_bool b) -> string_of_bool b
   | _ -> E.invalid_default_value 
     ~field_name ~info:"invalid default type" ()
+
+(* Generate the string which is the default value for a given field
+   type and default information.
+ *)
+let default_value_of_type field_name field_type field_default = 
+  match field_type with 
+  | T.User_defined_type t -> 
+    function_name_of_user_defined "default" t  ^ " ()"
+  | T.Unit          -> "()"
+  | T.Basic_type bt -> default_value_of_basic_type field_name bt field_default
+  | T.Associative_list _ -> "[]"
+
 
 (* This function returns [(field_name, field_default_value, field_type)] for 
    a record field.

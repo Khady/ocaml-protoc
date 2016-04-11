@@ -6,8 +6,8 @@ let sp x =  Printf.sprintf x
 let let_decl_of_and = function | Some _ -> "and" | None -> "let rec" 
 
 let string_of_field_type ?type_qualifier:(type_qualifier = T.No_qualifier) field_type = 
-  let s = match field_type with 
-    | T.Unit -> "unit"
+
+  let string_of_basic_type = function 
     | T.String -> "string"
     | T.Float  -> "float"
     | T.Int    -> "int"
@@ -15,8 +15,25 @@ let string_of_field_type ?type_qualifier:(type_qualifier = T.No_qualifier) field
     | T.Int64  -> "int64"
     | T.Bytes  -> "bytes"
     | T.Bool   -> "bool"
-    | T.User_defined_type {T.module_ = None; T.type_name} -> type_name
-    | T.User_defined_type {T.module_ = Some module_; T.type_name} -> module_ ^ "." ^ type_name
+  in
+
+  let string_of_user_defined = function 
+    | {T.module_ = None; T.type_name} -> type_name
+    | {T.module_ = Some module_; T.type_name} -> module_ ^ "." ^ type_name
+  in
+
+  let s = match field_type with 
+    | T.Unit -> "unit"
+    | T.Basic_type bt -> string_of_basic_type bt
+    | T.User_defined_type ud -> string_of_user_defined ud 
+    | T.Associative_list {T.al_key; al_value} -> 
+      Printf.sprintf "(%s * %s) list" 
+        (string_of_basic_type al_key) 
+        (
+          match al_value with 
+          | T.Al_basict_type bt -> string_of_basic_type bt 
+          | T.Al_user_defined_type ud -> string_of_user_defined ud
+        )
   in
   match type_qualifier with 
   | T.No_qualifier -> s 

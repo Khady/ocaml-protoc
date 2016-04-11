@@ -45,8 +45,7 @@ type user_defined_type = {
   type_name : string; 
 }
 
-type field_type = 
-  | Unit   (** currently being used for empty protobuf message *)
+type basic_type = 
   | String 
   | Float 
   | Int 
@@ -54,7 +53,21 @@ type field_type =
   | Int64
   | Bytes
   | Bool
+
+type associative_list_value = 
+  | Al_basict_type of basic_type
+  | Al_user_defined_type of user_defined_type 
+
+type associative_list = {
+  al_key : basic_type; 
+  al_value : associative_list_value; 
+}
+
+type field_type = 
+  | Unit (** currently being used for empty protobuf message *)
+  | Basic_type of basic_type
   | User_defined_type of user_defined_type
+  | Associative_list of associative_list
 
 type field_name = string 
 

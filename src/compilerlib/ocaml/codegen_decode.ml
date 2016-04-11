@@ -7,7 +7,12 @@ open Codegen_util
 
 let gen_decode_record ?and_ {T.record_name; fields} sc = 
 
-  let decode_field_f field_type payload_kind nested = 
+  let decode_field_f field_name field_type payload_kind nested = 
+
+    let decode_bt bt = 
+      Backend_ocaml_static.runtime_function (`Decode, payload_kind, bt)
+    in
+
     match field_type with 
     | T.User_defined_type t -> 
         let f_name = function_name_of_user_defined "decode" t in
@@ -16,7 +21,15 @@ let gen_decode_record ?and_ {T.record_name; fields} sc =
         else (f_name ^ " d") 
     | T.Unit -> 
         "Pbrt.Decoder.empty_nested d"
-    | _ -> (Backend_ocaml_static.runtime_function (`Decode, payload_kind, field_type) ^ " d") 
+    | T.Basic_type bt -> (decode_bt bt) ^ " d" 
+    | T.Associative_list {T.al_key; al_value} -> 
+      let decode_key   = decode_bt  al_key in
+      let decode_value = begin match al_value with
+        | T.Al_basict_type bt -> decode_bt bt
+        | T.Al_user_defined_type ud -> function_name_of_user_defined "decode" ud
+      end in 
+      Printf.sprintf "(Pbrt.Decoder.map_entry d ~decode_key:%s ~decode_value:%s)::v.%s" 
+        decode_key decode_value field_name
   in
 
   (* list fields have a special treatement when decoding since each new element
@@ -36,7 +49,7 @@ let gen_decode_record ?and_ {T.record_name; fields} sc =
   let process_regular_field sc field field_encoding =   
     let {T.encoding ; T.field_type; T.field_name; T.type_qualifier;} = field in 
     let {T.field_number; payload_kind; nested; packed} = field_encoding in 
-    let f = decode_field_f field_type payload_kind nested in 
+    let f = decode_field_f field_name field_type payload_kind nested in 
     let has_assignment, rhs = match type_qualifier, packed with
       | T.No_qualifier, false -> true, sp "(%s)" f  
       | T.Option, false -> true, sp "Some (%s)" f
@@ -69,7 +82,7 @@ let gen_decode_record ?and_ {T.record_name; fields} sc =
         T.field_name = constructor_name; 
         T.type_qualifier = _ ;
       } = field in 
-      let f = decode_field_f field_type payload_kind nested in 
+      let f = decode_field_f constructor_name field_type payload_kind nested in 
       let payload_kind = Codegen_util.string_of_payload_kind ~capitalize:() payload_kind packed in 
       match field_type with
       | T.Unit -> (
@@ -139,8 +152,8 @@ let gen_decode_variant ?and_ {T.variant_name; variant_constructors; variant_enco
       F.line sc @@ sp "| Some (%i, _) -> %s (%s)" field_number field_name decoding 
     | T.Unit -> 
       F.line sc @@ sp "| Some (%i, _) -> (Pbrt.Decoder.empty_nested d ; %s)" field_number field_name 
-    | _ -> 
-      let decoding = Backend_ocaml_static.runtime_function (`Decode, payload_kind, field_type) ^ " d" in
+    | T.Basic_type bt -> 
+      let decoding = Backend_ocaml_static.runtime_function (`Decode, payload_kind, bt) ^ " d" in
       F.line sc @@ sp "| Some (%i, _) -> %s (%s)" field_number field_name decoding
   in 
 

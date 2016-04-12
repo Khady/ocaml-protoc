@@ -31,18 +31,14 @@ type payload_kind =
   | Bits64
   | Bytes 
 
-type field_encoding = {
-  field_number : int; 
-  payload_kind : payload_kind; 
-  nested : bool;
-  default: Pbpt.constant option;
-  packed: bool; 
-    (* https://developers.google.com/protocol-buffers/docs/encoding#packed *)
-}
-
 type user_defined_type = {
   module_ : string option; 
   type_name : string; 
+  nested : bool; 
+    (* The nested property indicate whether this [user_defined_type] requires 
+     * a nested decoder. For types which serialize to a message it will be 
+     * true (ie message in protobuf) but for enum types it won't. 
+     *)
 }
 
 type basic_type = 
@@ -54,82 +50,75 @@ type basic_type =
   | Bytes
   | Bool
 
-type associative_list_value = 
-  | Al_basict_type of basic_type
-  | Al_user_defined_type of user_defined_type 
-
-type associative_list = {
-  al_key : basic_type; 
-  al_value : associative_list_value; 
-}
-
 type field_type = 
-  | Unit (** currently being used for empty protobuf message *)
-  | Basic_type of basic_type
+  | Unit
+  | Basic_type        of basic_type
   | User_defined_type of user_defined_type
-  | Associative_list of associative_list
 
-type field_name = string 
+type default_value = Pbpt.constant option 
 
-type type_qualifier = 
-  | No_qualifier
-  | Option
-  | List 
-  | Repeated_field
+type associative_type  = 
+  | Al_list
+  (*
+  | Al_hashtable
+  | Al_map
+  *)
 
-(** the field is parametrized by the encoding_type with could either 
-    [field_encoding] or [record_encoding_type] depending 
-    if the field is used in a variant or record type
- *) 
-type 'a afield = {
-  field_type : field_type; 
-  type_qualifier : type_qualifier; 
-  encoding : 'a;
-  mutable_ : bool;
+type repeated_type = 
+  | Rt_list
+  | Rt_repeated_field
+
+type encoding_number = int 
+
+type is_packed = bool 
+
+type record_field_type = 
+  | Required          of (field_type * encoding_number * payload_kind * default_value)  
+  
+  | Optional          of (field_type * encoding_number * payload_kind * default_value) 
+
+  | Repeated_field    of (repeated_type* field_type * encoding_number * payload_kind * is_packed)  
+
+  | Associative_field of (associative_type           * 
+                          encoding_number            * 
+                         (basic_type * payload_kind) * 
+                         (field_type * payload_kind))
+
+  | Variant_field     of variant 
+
+and variant_constructor = {
+  vc_constructor : string ; 
+  vc_field_type : variant_constructor_type; 
+  vc_encoding_number : encoding_number; 
+  vc_payload_kind: payload_kind; 
 }
 
-type 'a named_field = {
-  field_name : field_name; 
-  field : 'a afield;
+and variant_constructor_type = 
+  | Nullary 
+  | Non_nullary_constructor of field_type 
+
+and variant = {
+  v_name : string; 
+  v_constructors : variant_constructor list; 
 }
 
-type variant_encoding = 
-  | Inlined_within_message 
-  | Standalone 
-(** protobuf type system does not explicitely support standalone variant type since
-    `one of` fields can only be within a `message` type. 
-
-   However we support an optimization so that protobuf messages which only
-   contain a single `one of` field are mapped to an OCaml variant rather 
-   than a record with a single field of a variant type. This optimization allow
-   cleaner and more consice generated code. 
-
-   Therefore an OCaml variant can be encoded into 2 different way. Either it is 
-   a standalone variant or it is actually part of a record. This information
-   needs to be kept track of to generate the code accordingly. 
- *)
-
-type variant = {
-  variant_name : string; 
-  variant_constructors : field_encoding named_field list; 
-  variant_encoding : variant_encoding; 
+and record_field = {
+  rf_label : string; 
+  rf_field_type : record_field_type;
+  rf_mutable : bool;
 }
 
-type const_variant = {
-  cvariant_name : string; 
-  cvariant_constructors : (string * int) list ;
+and record = {
+  r_name : string; 
+  r_fields : record_field list; 
 }
 
-type record_encoding_type = 
-  | Regular_field of field_encoding
-  | One_of        of variant  
-
-type record = {
-  record_name: string; 
-  fields : record_encoding_type named_field list; 
+and const_variant = {
+  cv_name : string; 
+  cv_constructors : (string * int) list;
 }
 
-type type_spec = 
+and type_spec = 
   | Record of record 
   | Variant of variant
   | Const_variant  of const_variant 

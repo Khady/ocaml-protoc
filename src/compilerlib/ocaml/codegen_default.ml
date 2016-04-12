@@ -40,7 +40,10 @@ let default_value_of_type field_name field_type field_default =
    a record field.
  *)
 let record_field_default_info field : (string * string * string) =  
-  let {T.field_name; field_type; encoding; type_qualifier } = field in 
+  let {
+    T.field_name; 
+    T.field = {T.field_type; encoding; type_qualifier }; 
+  } = field in 
   let field_type_string = 
     Codegen_util.string_of_field_type ~type_qualifier field_type in  
   match encoding with
@@ -65,7 +68,11 @@ let record_field_default_info field : (string * string * string) =
   | T.One_of {variant_constructors; T.variant_encoding = T.Inlined_within_message; _ } ->
     begin match variant_constructors with
     | [] -> failwith "programmatic TODO error" 
-    | {T.field_type; field_name = constructor_name ; encoding = field_encoding; _ } :: _ ->
+    | {T.field; field_name = constructor_name; } :: _ -> 
+      
+      let field_encoding = field.T.encoding in 
+      let field_type = field.T.field_type in 
+      
       match field_type with 
       | T.Unit -> (field_name, constructor_name, field_type_string) 
       | _ -> (
@@ -118,7 +125,7 @@ let gen_default_record  ?mutable_ ?and_ {T.record_name; fields } sc =
 let gen_default_variant ?and_ {T.variant_name; T.variant_constructors ; T.variant_encoding = _ } sc = 
   match variant_constructors with
   | []     -> failwith "programmatic TODO error" 
-  | {T.field_type; field_name = constructor_name ; encoding; _ } :: _ ->
+  | {T.field_name = constructor_name; T.field = {T.encoding; field_type;_ }} :: _ ->
     let decl = let_decl_of_and and_ in 
     match field_type with
     | T.Unit -> 

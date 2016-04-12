@@ -23,7 +23,7 @@ let gen_type_record ?mutable_ ?and_ {T.record_name; fields } sc =
 
   F.line sc @@ sp "%s %s = {" (type_decl_of_and and_) type_name ;
   F.scope sc (fun sc -> 
-    List.iter (fun {T.field_name; field_type; type_qualifier; mutable_; _ } -> 
+    List.iter (fun {T.field_name; field = {T.field_type; type_qualifier; mutable_;}} -> 
       let type_name = string_of_field_type ~type_qualifier field_type in 
       F.line sc @@ sp "%s%s : %s;" (field_prefix type_qualifier mutable_) field_name type_name 
     ) fields;
@@ -34,7 +34,7 @@ let gen_type_variant ?and_ variant sc =
   let {T.variant_name; variant_constructors; variant_encoding = _ } = variant in
   F.line sc @@ sp "%s %s =" (type_decl_of_and and_) variant_name; 
   F.scope sc (fun sc -> 
-    List.iter (fun {T.field_name; field_type; type_qualifier; _ } -> 
+    List.iter (fun {T.field_name; field = {T.field_type; type_qualifier; }} -> 
       match field_type with
       | T.Unit -> F.line sc @@ sp "| %s" field_name 
       | _ -> (

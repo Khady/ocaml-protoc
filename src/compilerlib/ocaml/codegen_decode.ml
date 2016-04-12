@@ -37,7 +37,7 @@ let gen_decode_record ?and_ {T.record_name; fields} sc =
      to retreive the right order efficiently we reverse all the repeated field
      lists values when the message is done being decoded. 
    *) 
-  let all_lists = List.fold_left (fun acc {T.field_name; T.type_qualifier; _ } -> 
+  let all_lists = List.fold_left (fun acc {T.field_name; field = {T.type_qualifier; _}} -> 
     match type_qualifier with
     | T.List -> field_name :: acc 
     | _ -> acc  
@@ -47,7 +47,10 @@ let gen_decode_record ?and_ {T.record_name; fields} sc =
    *)
 
   let process_regular_field sc field field_encoding =   
-    let {T.encoding ; T.field_type; T.field_name; T.type_qualifier;} = field in 
+    let {
+      T.field = {T.encoding ; T.field_type; T.type_qualifier;}; 
+      T.field_name; 
+    } = field in 
     let {T.field_number; payload_kind; nested; packed} = field_encoding in 
     let f = decode_field_f field_name field_type payload_kind nested in 
     let has_assignment, rhs = match type_qualifier, packed with
@@ -73,14 +76,19 @@ let gen_decode_record ?and_ {T.record_name; fields} sc =
   in 
 
   let process_one_of sc field variant = 
-    let {T.encoding; T.field_type; T.field_name; T.type_qualifier;} = field in 
+    let {
+      T.field = {T.encoding; T.field_type; T.type_qualifier;}; 
+      T.field_name; 
+    } = field in 
     let {T.variant_name;variant_constructors;variant_encoding = _ } = variant in 
     List.iter (fun field ->
       let {
-        T.encoding = {T.field_number; payload_kind; nested; packed} ;
-        T.field_type; 
         T.field_name = constructor_name; 
-        T.type_qualifier = _ ;
+        T.field = {
+          T.encoding = {T.field_number; payload_kind; nested; packed} ;
+          T.field_type; 
+          T.type_qualifier = _ ;
+        };
       } = field in 
       let f = decode_field_f constructor_name field_type payload_kind nested in 
       let payload_kind = Codegen_util.string_of_payload_kind ~capitalize:() payload_kind packed in 
@@ -121,7 +129,7 @@ let gen_decode_record ?and_ {T.record_name; fields} sc =
       );
       F.line sc ")";
       List.iter (fun field -> 
-        match field.T.encoding with 
+        match field.T.field.T.encoding with 
         | T.Regular_field field_encoding -> 
             process_regular_field sc field field_encoding 
         | T.One_of ({T.variant_encoding = T.Inlined_within_message; _} as variant)  -> 
@@ -140,7 +148,14 @@ let gen_decode_record ?and_ {T.record_name; fields} sc =
 let gen_decode_variant ?and_ {T.variant_name; variant_constructors; variant_encoding = _ } sc = 
 
   let process_ctor sc ctor = 
-    let {T.encoding; field_type; field_name; type_qualifier = _  } = ctor in  
+    let {
+      T.field_name; 
+      T.field = {
+        T.encoding; 
+        field_type; 
+        type_qualifier = _  
+      };
+    } = ctor in  
     let {T.field_number; T.nested; T.payload_kind; _  } = encoding in 
     match field_type with 
     | T.User_defined_type t -> 

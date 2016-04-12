@@ -81,10 +81,12 @@ let gen_encode_record ?and_ {T.record_name; fields } sc =
   F.scope sc (fun sc -> 
     List.iter (fun field -> 
       let {
-        T.encoding = record_field_encoding; 
-        field_type; 
-        field_name; 
-        type_qualifier; 
+        T.field_name; 
+        T.field = {
+          T.encoding = record_field_encoding; 
+          field_type; 
+          type_qualifier; 
+        }
       } = field in 
 
       match record_field_encoding with 
@@ -148,7 +150,7 @@ let gen_encode_record ?and_ {T.record_name; fields } sc =
       )
       | T.One_of {T.variant_constructors; T.variant_name = _; T.variant_encoding = T.Inlined_within_message} -> (  
         F.line sc @@ sp "(match v.%s with" field_name;
-        List.iter (fun {T.encoding = field_encoding ; field_type; field_name; type_qualifier= _ } ->
+        List.iter (fun {T.field_name; T.field = {T.encoding = field_encoding ; field_type; _ }} ->
           (match field_type with 
           | T.Unit -> F.line sc @@ sp "| %s -> (" field_name
           | _ -> F.line sc @@ sp "| %s x -> (" field_name
@@ -172,7 +174,7 @@ let gen_encode_variant ?and_ variant sc =
   F.line sc @@ sp "%s encode_%s (v:%s) encoder = " (let_decl_of_and and_) variant_name variant_name;
   F.scope sc (fun sc -> 
     F.line sc "match v with";
-    List.iter (fun {T.encoding; field_type; field_name; type_qualifier= _ } ->
+    List.iter (fun {T.field_name; T.field = {T.encoding; field_type; _}} ->
       (match field_type with 
       | T.Unit -> F.line sc @@ sp "| %s -> (" field_name
       | _ -> F.line sc @@ sp "| %s x -> (" field_name

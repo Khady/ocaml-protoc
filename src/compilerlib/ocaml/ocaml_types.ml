@@ -36,8 +36,8 @@ type field_encoding = {
   payload_kind : payload_kind; 
   nested : bool;
   default: Pbpt.constant option;
-  packed: bool; (**
-  https://developers.google.com/protocol-buffers/docs/encoding#packed *)
+  packed: bool; 
+    (* https://developers.google.com/protocol-buffers/docs/encoding#packed *)
 }
 
 type user_defined_type = {
@@ -83,10 +83,14 @@ type type_qualifier =
  *) 
 type 'a afield = {
   field_type : field_type; 
-  field_name : field_name; 
   type_qualifier : type_qualifier; 
   encoding : 'a;
   mutable_ : bool;
+}
+
+type 'a named_field = {
+  field_name : field_name; 
+  field : 'a afield;
 }
 
 type variant_encoding = 
@@ -107,7 +111,7 @@ type variant_encoding =
 
 type variant = {
   variant_name : string; 
-  variant_constructors : field_encoding afield list; 
+  variant_constructors : field_encoding named_field list; 
   variant_encoding : variant_encoding; 
 }
 
@@ -122,7 +126,7 @@ type record_encoding_type =
 
 type record = {
   record_name: string; 
-  fields : record_encoding_type afield list; 
+  fields : record_encoding_type named_field list; 
 }
 
 type type_spec = 

@@ -11,8 +11,8 @@ let gen_pp_field field_type =
   | T.Associative_list {T.al_key; T.al_value} -> 
     let pp_key = sp "Pbrt.Pp.pp_%s" (string_of_field_type (T.Basic_type al_key)) in 
     let pp_value = sp "Pbrt.Pp.pp_%s" (begin match al_value with
-      | Al_basict_type bt -> string_of_field_type (T.Basic_type bt) 
-      | Al_user_defined_type ud -> string_of_field_type (T.User_defined_type ud) 
+      | T.Al_basict_type bt -> string_of_field_type (T.Basic_type bt) 
+      | T.Al_user_defined_type ud -> string_of_field_type (T.User_defined_type ud) 
     end) in 
     sp "(Pbrt.Pp.pp_associative_list %s %s)"
       pp_key pp_value 
@@ -32,10 +32,13 @@ let gen_pp_record  ?and_ {T.record_name; fields } sc =
       List.iter (fun field -> 
 
         let {
-          T.field_type; 
-          field_name; 
-          type_qualifier ; 
-          encoding = record_field_encoding} = field in 
+          T.field_name; 
+          T.field = {
+            T.field_type; 
+            type_qualifier ; 
+            encoding = record_field_encoding
+          }
+        } = field in 
 
         let x:string = sp "v.%s" field_name in 
         match record_field_encoding with 
@@ -78,7 +81,7 @@ let gen_pp_variant ?and_ {T.variant_name; T.variant_constructors; T.variant_enco
   F.line sc @@ sp "%s pp_%s fmt (v:%s) =" (let_decl_of_and and_) variant_name variant_name;
   F.scope sc (fun sc -> 
     F.line sc "match v with";
-    List.iter (fun {T.field_type; field_name; _ } ->
+    List.iter (fun {T.field = {T.field_type; _ } ; field_name; _ } ->
       let field_string_of = gen_pp_field field_type in 
       match field_type with
       | T.Unit -> 

@@ -61,7 +61,7 @@ val invalid_default_value :
   unit -> 'a
 
 val unsupported_field_type : 
-  field_name:string ->
+  ?field_name:string ->
   field_type:string -> 
   backend_name:string ->
   unit -> 'a
@@ -82,7 +82,7 @@ val missing_semicolon_for_enum_value : string -> Loc.t -> 'a
 
 val invalid_enum_specification : string -> Loc.t -> 'a 
 
-val invalid_mutable_option : string -> 'a
+val invalid_mutable_option : ?field_name:string -> unit -> 'a
 
 val missing_one_of_name : Loc.t -> 'a 
 

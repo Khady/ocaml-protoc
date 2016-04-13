@@ -56,7 +56,7 @@ val duplicated_field_number :
   unit -> 'a 
 
 val invalid_default_value : 
-  field_name:string -> 
+  ?field_name:string -> 
   info:string ->
   unit -> 'a
 

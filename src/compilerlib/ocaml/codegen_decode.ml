@@ -98,7 +98,7 @@ let gen_decode_record ?and_ {T.r_name; r_fields} sc =
     process_field_common sc encoding_number "Bytes" (fun sc -> 
       F.line sc @@ sp "v.%s <- (" rf_label; 
       F.scope sc (fun sc -> 
-        F.line sc @@ sp "Pbrt.Decoder.map_entry d ~decode_key:%s ~decode_value:%s)::v.%s"
+        F.line sc @@ sp "(Pbrt.Decoder.map_entry d ~decode_key:%s ~decode_value:%s)::v.%s"
           decode_key_f decode_value_f rf_label
       ); 
       F.line sc ");" 

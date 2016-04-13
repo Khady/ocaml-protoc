@@ -160,10 +160,10 @@ type codegen_f = ?and_:unit -> Ocaml_types.type_ -> Fmt.scope -> bool
 
 
 let all_code_gen = [
-  (*(module Codegen_type: Codegen.S);*)
-  (*(module Codegen_default: Codegen.S);*)
+  (module Codegen_type: Codegen.S);
+  (module Codegen_default: Codegen.S);
   (module Codegen_decode: Codegen.S);
-  (*(module Codegen_encode: Codegen.S);*)
+  (module Codegen_encode: Codegen.S);
   (*(module Codegen_pp: Codegen.S);*)
 ]
   

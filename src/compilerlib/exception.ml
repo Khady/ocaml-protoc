@@ -53,7 +53,7 @@ type duplicate_field_number = {
 }
 
 type invalid_default_value = {
-  field_name: string; 
+  field_name: string option; 
   info: string; 
 }
 
@@ -103,7 +103,7 @@ let prepare_error = function
 
   | Invalid_default_value {field_name; info}  -> 
     P.sprintf "invalid default value for field name:%s (info: %s)"
-      field_name info
+      (Util.option_default "" field_name) info
 
   | Unsupported_field_type {field_name; field_type; backend_name} -> 
     P.sprintf "unsupported field type for field name:%s with type:%s in bakend: %s"
@@ -195,7 +195,7 @@ let duplicated_field_number ~field_name ~previous_field_name ~message_name  () =
     message_name;
   }))
 
-let invalid_default_value ~field_name ~info () = 
+let invalid_default_value ?field_name ~info () = 
   raise (Compilation_error (Invalid_default_value {field_name; info} ))
 
 let unsupported_field_type ?field_name ~field_type ~backend_name () = 

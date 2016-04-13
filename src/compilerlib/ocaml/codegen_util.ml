@@ -19,6 +19,7 @@ let string_of_user_defined = function
   | {T.module_ = Some module_; T.type_name} -> module_ ^ "." ^ type_name
 
 let string_of_field_type = function 
+  | T.Unit -> "unit"
   | T.Basic_type bt -> string_of_basic_type bt 
   | T.User_defined_type ud -> string_of_user_defined ud  
 
@@ -41,7 +42,7 @@ let string_of_record_field_type = function
         (string_of_basic_type key_type)
         (string_of_field_type value_type) 
         (string_of_associative_type at) 
-  | T.Variant_field {v_name; _ } -> v_name
+  | T.Variant_field {T.v_name; _ } -> v_name
  
 (** [function_name_of_user_defined prefix user_defined] returns the function
     name of the form `(module'.'?)prefix_(type_name)`. 
